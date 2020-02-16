@@ -1,0 +1,32 @@
+apiVersion: krew.googlecontainertools.github.com/v1alpha2
+kind: Plugin
+metadata:
+  name: node-restart               # plugin name must match your manifest file name (e.g. foo.yaml)
+spec:
+  version: "v0.0.1"       # required, must be in semver format, prefixed with "v"
+  platforms:
+  # specify installation script for linux and darwin (macOS)
+  - selector:             # a regular Kubernetes selector
+      matchExpressions:
+      - {key: os, operator: In, values: [darwin, linux]}
+    # url for downloading the package archive:
+    uri: https://github.com/mnrgreg/kubectl-node-restart/releases/v0.0.1.zip
+    # sha256sum of the above archive file:
+    sha256: "db32ebd8b6caf574036a12f97ee281905daf8da25ff6e4554edf71d7af473148"
+    # copy the used files out of the zip archive, defaults to `[{from: "*", to: "."}]`
+    files:
+    - from: "*.sh" # path to the files extracted from archive
+      to:  "."                 # '.' refers to the root of plugin install directory
+    - from: "LICENSE"   # always install your LICENSE file
+      to: "."
+    bin: "kubectl-node-restart"  # path to the plugin executable after copying files above
+  shortDescription: >-    # short description gets truncated at ~50 chars
+    Restarts K8S nodes sequentially & gracefully
+  homepage: https://github.com/mnrgreg/kubectl-node-restart
+  # (optional) use caveats field to show post-installation recommendations
+  caveats: |
+    This plugin requires execution with cluster-admin priveleges.
+  description: |
+    This plugin performs a sequential, rolling restart of selected nodes by first
+    draining each node, then running a kubernetes job to reboot each host, and
+    finally uncordoning each node when Ready. 
