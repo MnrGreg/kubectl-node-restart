@@ -1,32 +1,27 @@
 apiVersion: krew.googlecontainertools.github.com/v1alpha2
 kind: Plugin
 metadata:
-  name: node-restart               # plugin name must match your manifest file name (e.g. foo.yaml)
+  name: node-restart
 spec:
-  version: "v0.0.1"       # required, must be in semver format, prefixed with "v"
+  version: "v0.0.2"
   platforms:
-  # specify installation script for linux and darwin (macOS)
-  - selector:             # a regular Kubernetes selector
+  - selector:
       matchExpressions:
       - {key: os, operator: In, values: [darwin, linux]}
-    # url for downloading the package archive:
-    uri: https://github.com/mnrgreg/kubectl-node-restart/releases/v0.0.1.zip
-    # sha256sum of the above archive file:
-    sha256: "db32ebd8b6caf574036a12f97ee281905daf8da25ff6e4554edf71d7af473148"
-    # copy the used files out of the zip archive, defaults to `[{from: "*", to: "."}]`
+    uri: https://github.com/MnrGreg/kubectl-node-restart/releases/download/v0.0.2/v0.0.2.zip
+    sha256: "44db0eee9603085652837d26c5352287864f158b557f78ae19325724640535f8"
     files:
-    - from: "*.sh" # path to the files extracted from archive
-      to:  "."                 # '.' refers to the root of plugin install directory
-    - from: "LICENSE"   # always install your LICENSE file
+    - from: "*.sh"
+      to:  "."
+    - from: "LICENSE"
       to: "."
-    bin: "kubectl-node-restart"  # path to the plugin executable after copying files above
-  shortDescription: >-    # short description gets truncated at ~50 chars
-    Restarts K8S nodes sequentially & gracefully
+    bin: "node-restart.sh"
+  shortDescription: >-
+    Restart Kubernetes Nodes sequentially & gracefully
   homepage: https://github.com/mnrgreg/kubectl-node-restart
-  # (optional) use caveats field to show post-installation recommendations
   caveats: |
-    This plugin requires execution with cluster-admin priveleges.
+    Execution of this plugin requires Kubernetes cluster-admin Rolebindings.
   description: |
     This plugin performs a sequential, rolling restart of selected nodes by first
-    draining each node, then running a kubernetes job to reboot each host, and
-    finally uncordoning each node when Ready. 
+    Draining each node, then running a Kubernetes Job to reboot each node, and
+    finally Uncordoning each node when Ready. 

@@ -1,14 +1,14 @@
 #!/bin/bash
 
 image='alpine:3.9'
-nodesleep=10   #Time between node restarts - give pods time to start up
+nodesleep=20        #Time delay between node restarts - give pods time to start up
 force=false
 dryrun=false
 blue='\033[0;34m'
 nocolor='\033[0m'
 
 function print_usage() {
-  echo "Usage: $0 [<options>]"
+  echo "Usage: kubectl node-restart [<options>]"
   echo ""
   echo "all                                 Restarts all nodes within the cluster"
   echo ""
@@ -17,6 +17,8 @@ function print_usage() {
   echo "-f|--force                          Restart node(s) without first draining"
   echo ""
   echo "-d|--dry-run                        Just print what to do; don't actually do it"
+  echo ""
+  echo "-s|--sleep                          Sleep delay between restarting Nodes (default 20s)"
   echo ""
   echo "-h|--help                           Print usage and exit"
 }
@@ -41,6 +43,11 @@ do
     ;;
     -d|--dry-run)
     dryrun=true
+    shift
+    ;;
+    -s|--sleep)
+    nodesleep="$2"
+    shift
     shift
     ;;
     -h|--help)
