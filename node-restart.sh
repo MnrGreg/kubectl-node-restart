@@ -65,7 +65,7 @@ function wait_for_job_completion() {
   pod=$1
   i=0
   while [[ $i -lt 30 ]]; do
-    status=$(kubectl get job $pod -o "jsonpath={.status.succeeded}" 2>/dev/null)
+    status=$(kubectl get job $pod -n kube-system -o "jsonpath={.status.succeeded}" 2>/dev/null)
     if [[ $status -gt 0 ]]; then
       echo "Restart complete after $((i*10)) seconds"
       break;
@@ -144,6 +144,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: $pod
+  namespace: kube-system
 spec:
   backoffLimit: 3
   ttlSecondsAfterFinished: 30
@@ -177,7 +178,7 @@ EOT
     echo "kubectl uncordon $node"
   else
     kubectl uncordon "$node"
-    kubectl delete job $pod
+    kubectl delete job $pod -n kube-system
     sleep $nodesleep
   fi
 done
