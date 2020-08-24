@@ -26,6 +26,12 @@
     kubectl node-restart --selector node-role.kubernetes.io/master
 ```
 
+- execute a command prior to reboot labels
+
+```bash
+    kubectl node-restart all --command "echo 'hello world'"
+```
+
 - perform a dry-run
 
 ```bash
@@ -43,3 +49,15 @@
 ```bash
     kubectl node-restart all --sleep 120
 ```
+
+- Pull the Alpine image from a private registry
+
+```bash
+    kubectl node-restart all --registry myregistry.local/library/alpine:3.9
+```
+
+
+<!--
+zip v1.0.1.zip node-restart.sh LICENSE
+openssl dgst -sha256 v1.0.1.zip
+-->

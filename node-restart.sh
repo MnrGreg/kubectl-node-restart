@@ -6,6 +6,7 @@ force=false
 dryrun=false
 blue='\033[0;34m'
 nocolor='\033[0m'
+rebootcommand='touch /node-restart-flag && reboot'
 
 function print_usage() {
   echo "Usage: kubectl node-restart [<options>]"
@@ -19,6 +20,10 @@ function print_usage() {
   echo "-d|--dry-run                        Just print what to do; don't actually do it"
   echo ""
   echo "-s|--sleep                          Sleep delay between restarting Nodes (default 20s)"
+  echo ""
+  echo "-r|--registry                       Pull Alpine image from an alternate registry"
+  echo ""
+  echo "-c|--command                        Pre-restart command to be executed"
   echo ""
   echo "-h|--help                           Print usage and exit"
 }
@@ -47,6 +52,16 @@ do
     ;;
     -s|--sleep)
     nodesleep="$2"
+    shift
+    shift
+    ;;
+    -r|--registry)
+    image="$2"
+    shift
+    shift
+    ;;
+    -c|--command)
+    rebootcommand="$2 && touch /node-restart-flag && reboot"
     shift
     shift
     ;;
@@ -109,7 +124,7 @@ if [ "$allnodes" == "true" ]; then
   done
 elif [ ! -z "$selector" ]; then
   nodes=$(kubectl get nodes --selector=$selector -o jsonpath={.items[*].metadata.name})
-  echo -e "${blue}Targeting nodes:${nocolor}"
+  echo -e "${blue}Targeting selective nodes:${nocolor}"
   for node in $nodes; do
     echo " $node"
   done
@@ -139,7 +154,7 @@ for node in $nodes; do
   if $dryrun; then
     echo "kubectl create job $pod"
   else
-cat <<EOT | kubectl apply -f -
+cat << EOT | kubectl apply -f -
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -159,7 +174,7 @@ spec:
       - name: $pod
         image: $image
         command: [ "nsenter", "--target", "1", "--mount", "--uts", "--ipc", "--pid", "--", "bash", "-c" ]
-        args: [ "if [ -f /node-restart-flag ]; then rm /node-restart-flag && exit 0; else touch /node-restart-flag && reboot && exit 1; fi" ]
+        args: [ "if [ -f /node-restart-flag ]; then rm /node-restart-flag && exit 0; else $rebootcommand && exit 1; fi" ]
         securityContext:
           privileged: true
       restartPolicy: Never
