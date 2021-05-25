@@ -150,7 +150,7 @@ for node in $nodes; do
   fi
   
   echo -e "${blue}Initiating node restart job on $node...${nocolor}"
-  pod="node-restart-$(env LC_CTYPE=C < /dev/urandom | base64 | tr -dc 'a-z0-9' | fold -w 5 | head -n 1)"
+  pod="node-restart-$(env LC_CTYPE=C LC_ALL=C tr -dc a-z0-9 < /dev/urandom | head -c 5)"
   if $dryrun; then
     echo "kubectl create job $pod"
   else
