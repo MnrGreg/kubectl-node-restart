@@ -2,6 +2,9 @@
 
 image='alpine:3.9'
 nodesleep=20        #Time delay between node restarts - give pods time to start up
+restartdeadline=300
+kubeletdeadline=300
+uncordondelay=0
 force=false
 dryrun=false
 blue='\033[0;34m'
@@ -11,21 +14,18 @@ rebootcommand='touch /node-restart-flag && reboot'
 function print_usage() {
   echo "Usage: kubectl node-restart [<options>]"
   echo ""
-  echo "all                                 Restarts all nodes within the cluster"
+  echo "  all                                 Restarts all nodes within the cluster"
   echo ""
-  echo "-l|--selector key=value             Selector (label query) to target specific nodes"
-  echo ""
-  echo "-f|--force                          Restart node(s) without first draining"
-  echo ""
-  echo "-d|--dry-run                        Just print what to do; don't actually do it"
-  echo ""
-  echo "-s|--sleep                          Sleep delay between restarting Nodes (default 20s)"
-  echo ""
-  echo "-r|--registry                       Pull Alpine image from an alternate registry"
-  echo ""
-  echo "-c|--command                        Pre-restart command to be executed"
-  echo ""
-  echo "-h|--help                           Print usage and exit"
+  echo "  -l|--selector key=value             Selector (label query) to target specific nodes"
+  echo "  -f|--force                          Restart node(s) without first draining"
+  echo "  -d|--dry-run                        Just print what to do; don't actually do it"
+  echo "  -s|--sleep                          Sleep delay between restarting Nodes (default 20s)"
+  echo "  -r|--registry                       Pull Alpine image from an alternate registry"
+  echo "  -c|--command                        Pre-restart command to be executed"
+  echo "  -ud|--uncordon-delay                 Sleep delay before uncordoning a node (default 0s)"
+  echo "  -rd|--restart-deadline                  Deadline for the restart job to complete (default 300s)"
+  echo "  -kd|--kubelet-deadline                  Deadling for kubelet to start up (default 300s)"
+  echo "  -h|--help                           Print usage and exit"
 }
 
 while [[ $# -gt 0 ]]
@@ -34,44 +34,59 @@ do
 
   case $key in
     all)
-    allnodes=true
-    shift
+      allnodes=true
+      shift
     ;;
     -l|--selector)
-    selector="$2"
-    shift
-    shift
+      selector="$2"
+      shift
+      shift
     ;;
     -f|--force)
-    force=true
-    shift
+      force=true
+      shift
     ;;
     -d|--dry-run)
-    dryrun=true
-    shift
+      dryrun=true
+      shift
     ;;
     -s|--sleep)
-    nodesleep="$2"
-    shift
-    shift
+      nodesleep="$2"
+      shift
+      shift
     ;;
     -r|--registry)
-    image="$2"
-    shift
-    shift
+      image="$2"
+      shift
+      shift
     ;;
     -c|--command)
-    rebootcommand="$2 && touch /node-restart-flag && reboot"
-    shift
-    shift
+      rebootcommand="$2 && touch /node-restart-flag && reboot"
+      shift
+      shift
+    ;;
+    -ud|--uncordon-delay)
+      uncordondelay="$2"
+      shift
+      shift
+    ;;
+    -rd|--restart-deadline)
+      restartdeadline="$2"
+      shift
+      shift
+    ;;
+    -kd|--kubelet-deadline)
+      kubeletdeadline="$2"
+      shift
+      shift
     ;;
     -h|--help)
-    print_usage
-    exit 0
+      print_usage
+      exit 0
     ;;
     *)
-    print_usage
-    exit 1
+      print_usage
+      exit 1
     ;;
   esac
 done
@@ -79,19 +94,19 @@ done
 function wait_for_job_completion() {
   pod=$1
   i=0
-  while [[ $i -lt 30 ]]; do
+  while [[ $i -lt $restartdeadline ]]; do
     status=$(kubectl get job $pod -n kube-system -o "jsonpath={.status.succeeded}" 2>/dev/null)
     if [[ $status -gt 0 ]]; then
-      echo "Restart complete after $((i*10)) seconds"
+      echo "Restart complete after $i seconds"
       break;
     else
-      i=$(($i+1))
+      i=$(($i+10))
       sleep 10s
-      echo "$node - $((i*10)) seconds"
+      echo "$node - $i seconds"
     fi
   done
-  if [[ $i == 30 ]]; then
-    echo "Error: Restart job did not complete within 5 minutes"
+  if [[ $i == $restartdeadline ]]; then
+    echo "Error: Restart job did not complete within $restartdeadline seconds"
     exit 1
   fi
 }
@@ -99,19 +114,19 @@ function wait_for_job_completion() {
 function wait_for_status() {
   node=$1
   i=0
-  while [[ $i -lt 30 ]]; do
+  while [[ $i -lt $kubeletdeadline ]]; do
     status=$(kubectl get node $node -o "jsonpath={.status.conditions[?(.reason==\"KubeletReady\")].type}" 2>/dev/null)
     if [[ "$status" == "Ready" ]]; then
-      echo "KubeletReady after $((i*10)) seconds"
+      echo "KubeletReady after $i seconds"
       break;
     else
-      i=$(($i+1))
+      i=$(($i+10))
       sleep 10s
-      echo "$node NotReady - waited $((i*10)) seconds"
+      echo "$node NotReady - waited $i seconds"
     fi
   done
-  if [[ $i == 30 ]]; then
-    echo "Error: Did not reach KubeletReady state within 5 minute"
+  if [[ $i == $kubeletdeadline ]]; then
+    echo "Error: Did not reach KubeletReady state within $kubeletdeadline seconds"
     exit 1
   fi
 }
@@ -185,6 +200,13 @@ EOT
     echo -e "${blue}Waiting for restart job to complete on node $node...${nocolor}"
     wait_for_job_completion $pod
     wait_for_status $node KubeletReady
+  else
+    echo "Waiting $restartdeadline seconds for restart job completion."
+    echo "Waiting $kubeletdeadline seconds for kubelet initialization."
+  fi
+
+  if [[ $uncordondelay -gt 0 ]];
+    then echo "Waiting $uncordondelay seconds before uncordoning."
   fi
 
   echo -e "${blue}Uncordoning node $node${nocolor}"
@@ -192,6 +214,7 @@ EOT
   if $dryrun; then
     echo "kubectl uncordon $node"
   else
+    sleep $uncordondelay
     kubectl uncordon "$node"
     kubectl delete job $pod -n kube-system
     sleep $nodesleep
