@@ -16,7 +16,8 @@ changelog:
     - '^docs:'
     - '^test:'
 release:
-  ids: kubectl-node-restart
+  ids:
+  - kubectl-node-restart
   name_template: "{{ .TagName }}.zip"
   extra_files:
     - glob: ./LICENSE
