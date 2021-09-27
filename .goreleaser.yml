@@ -1,4 +1,5 @@
-build:
+builds:
+- id: kubectl-node-restart
   skip: true
 archives:
 - id: kubectl-node-restart
