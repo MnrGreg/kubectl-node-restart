@@ -55,3 +55,10 @@
 ```bash
     kubectl node-restart all --registry myregistry.local/library/alpine:3.9
 ```
+
+<!--
+export version=v1.0.3
+zip $version.zip node-restart.sh LICENSE
+git tag -a $version -m "bump $version"
+git push origin $version
+-->
