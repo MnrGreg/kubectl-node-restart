@@ -55,9 +55,3 @@
 ```bash
     kubectl node-restart all --registry myregistry.local/library/alpine:3.9
 ```
-
-
-<!--
-zip v1.0.1.zip node-restart.sh LICENSE
-openssl dgst -sha256 v1.0.1.zip
--->

@@ -1,0 +1,8 @@
+archives:
+- id: kubectl-node-restart
+  name_template: "{{ .TagName }}.zip"
+  wrap_in_directory: false
+  format: zip
+  files:
+  - LICENSE
+  - node-restart.sh
