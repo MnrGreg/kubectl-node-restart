@@ -18,7 +18,6 @@ changelog:
 release:
   ids:
   - kubectl-node-restart
-  name_template: "{{ .Tag }}.zip"
+  name_template: "{{ .Tag }}"
   extra_files:
-    - glob: ./LICENSE
-    - glob: ./node-restart.sh
+    - glob: ./*.zip
