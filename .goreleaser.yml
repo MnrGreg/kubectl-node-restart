@@ -15,3 +15,9 @@ changelog:
     exclude:
     - '^docs:'
     - '^test:'
+release:
+  ids: kubectl-node-restart
+  name_template: "{{ .TagName }}.zip"
+  extra_files:
+    - glob: ./LICENSE
+    - glob: ./node-restart.sh
