@@ -158,9 +158,9 @@ for node in $nodes; do
   else
     echo -e "\n${blue}Draining node $node...${nocolor}"
     if $dryrun; then
-      echo "kubectl drain $node --ignore-daemonsets --delete-local-data"
+      echo "kubectl drain $node --ignore-daemonsets --delete-emptydir-data"
     else
-      kubectl drain "$node" --ignore-daemonsets --delete-local-data
+      kubectl drain "$node" --ignore-daemonsets --delete-emptydir-data
     fi
   fi
   
