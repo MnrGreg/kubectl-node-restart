@@ -57,8 +57,12 @@
 ```
 
 <!--
-export version=v1.0.3
+# remove prior zip
+rm *.zip
+export version=v1.0.4
 zip $version.zip node-restart.sh LICENSE
+git add . && git commit -m "update alpine image" -m "add --force switch" -m "fix --delete-emptydir-data"
+git push
 git tag -a $version -m "bump $version"
 git push origin $version
 -->
