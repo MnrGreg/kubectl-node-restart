@@ -101,7 +101,7 @@ function wait_for_job_completion() {
       break;
     else
       i=$(($i+10))
-      sleep 10s
+      sleep 10
       echo "$node - $i seconds"
     fi
   done
@@ -121,7 +121,7 @@ function wait_for_status() {
       break;
     else
       i=$(($i+10))
-      sleep 10s
+      sleep 10
       echo "$node NotReady - waited $i seconds"
     fi
   done
