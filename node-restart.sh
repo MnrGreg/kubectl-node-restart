@@ -1,6 +1,6 @@
 #!/bin/bash
 
-image='alpine:3.9'
+image='alpine:3.15'
 nodesleep=20        #Time delay between node restarts - give pods time to start up
 restartdeadline=300
 kubeletdeadline=300
@@ -158,7 +158,7 @@ for node in $nodes; do
   else
     echo -e "\n${blue}Draining node $node...${nocolor}"
     if $dryrun; then
-      echo "kubectl drain $node --ignore-daemonsets --delete-emptydir-data"
+      echo "kubectl drain $node --ignore-daemonsets --delete-emptydir-data --force"
     else
       kubectl drain "$node" --ignore-daemonsets --delete-emptydir-data
     fi
