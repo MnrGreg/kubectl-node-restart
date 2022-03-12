@@ -160,7 +160,7 @@ for node in $nodes; do
     if $dryrun; then
       echo "kubectl drain $node --ignore-daemonsets --delete-emptydir-data --force"
     else
-      kubectl drain "$node" --ignore-daemonsets --delete-emptydir-data
+      kubectl drain "$node" --ignore-daemonsets --delete-emptydir-data --force
     fi
   fi
   
