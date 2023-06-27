@@ -1,7 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 image='alpine:3.15'
-nodesleep=20        #Time delay between node restarts - give pods time to start up
+nodesleep=20 #Time delay between node restarts - give pods time to start up
 restartdeadline=300
 kubeletdeadline=300
 uncordondelay=0
@@ -16,6 +16,7 @@ function print_usage() {
   echo ""
   echo "  all                                 Restarts all nodes within the cluster"
   echo ""
+  echo "  --context context                   Specify the context (or use kubectx)"
   echo "  -l|--selector key=value             Selector (label query) to target specific nodes"
   echo "  -f|--force                          Restart node(s) without first draining"
   echo "  -d|--dry-run                        Just print what to do; don't actually do it"
@@ -28,66 +29,72 @@ function print_usage() {
   echo "  -h|--help                           Print usage and exit"
 }
 
-while [[ $# -gt 0 ]]
-do
+while [[ $# -gt 0 ]]; do
   key="$1"
 
   case $key in
     all)
       allnodes=true
       shift
-    ;;
-    -l|--selector)
+      ;;
+    --context)
+      cluster="$2"
+      echo -e "${blue}Targeting cluster $cluster${nocolor}"
+      context="--context $cluster"
+      shift
+      shift
+      ;;
+    -l | --selector)
       selector="$2"
       shift
       shift
-    ;;
-    -f|--force)
+      ;;
+    -f | --force)
       force=true
       shift
-    ;;
-    -d|--dry-run)
+      ;;
+    -d | --dry-run)
       dryrun=true
       shift
-    ;;
-    -s|--sleep)
+      ;;
+    -s | --sleep)
       nodesleep="$2"
       shift
       shift
-    ;;
-    -r|--registry)
+      ;;
+    -r | --registry)
       image="$2"
       shift
       shift
-    ;;
-    -c|--command)
+      ;;
+    -c | --command)
       rebootcommand="$2 && touch /node-restart-flag && reboot"
       shift
       shift
-    ;;
-    -ud|--uncordon-delay)
+      ;;
+    -ud | --uncordon-delay)
       uncordondelay="$2"
       shift
       shift
-    ;;
-    -rd|--restart-deadline)
+      ;;
+    -rd | --restart-deadline)
       restartdeadline="$2"
       shift
       shift
-    ;;
-    -kd|--kubelet-deadline)
+      ;;
+    -kd | --kubelet-deadline)
       kubeletdeadline="$2"
       shift
       shift
-    ;;
-    -h|--help)
+      ;;
+    -h | --help)
       print_usage
       exit 0
-    ;;
+      ;;
     *)
       print_usage
       exit 1
-    ;;
+      ;;
   esac
 done
 
@@ -95,12 +102,12 @@ function wait_for_job_completion() {
   pod=$1
   i=0
   while [[ $i -lt $restartdeadline ]]; do
-    status=$(kubectl get job $pod -n kube-system -o "jsonpath={.status.succeeded}" 2>/dev/null)
+    status=$(kubectl get job $pod -n kube-system -o "jsonpath={.status.succeeded}" $context 2> /dev/null)
     if [[ $status -gt 0 ]]; then
       echo "Restart complete after $i seconds"
-      break;
+      break
     else
-      i=$(($i+10))
+      i=$(($i + 10))
       sleep 10
       echo "$node - $i seconds"
     fi
@@ -115,12 +122,12 @@ function wait_for_status() {
   node=$1
   i=0
   while [[ $i -lt $kubeletdeadline ]]; do
-    status=$(kubectl get node $node -o "jsonpath={.status.conditions[?(.reason==\"KubeletReady\")].type}" 2>/dev/null)
+    status=$(kubectl get node $node -o "jsonpath={.status.conditions[?(.reason==\"KubeletReady\")].type}" $context 2> /dev/null)
     if [[ "$status" == "Ready" ]]; then
       echo "KubeletReady after $i seconds"
-      break;
+      break
     else
-      i=$(($i+10))
+      i=$(($i + 10))
       sleep 10
       echo "$node NotReady - waited $i seconds"
     fi
@@ -132,13 +139,13 @@ function wait_for_status() {
 }
 
 if [ "$allnodes" == "true" ]; then
-  nodes=$(kubectl get nodes -o jsonpath={.items[*].metadata.name})
+  nodes=$(kubectl get nodes -o jsonpath={.items[*].metadata.name} $context)
   echo -e "${blue}Targeting nodes:${nocolor}"
   for node in $nodes; do
     echo " $node"
   done
 elif [ ! -z "$selector" ]; then
-  nodes=$(kubectl get nodes --selector=$selector -o jsonpath={.items[*].metadata.name})
+  nodes=$(kubectl get nodes --selector=$selector -o jsonpath={.items[*].metadata.name} $context)
   echo -e "${blue}Targeting selective nodes:${nocolor}"
   for node in $nodes; do
     echo " $node"
@@ -151,25 +158,25 @@ for node in $nodes; do
   if $force; then
     echo -e "\nWARNING: --force specified, restarting node $node without draining first"
     if $dryrun; then
-      echo "kubectl cordon $node"
+      echo "kubectl cordon $node $context"
     else
-      kubectl cordon "$node"
+      kubectl $context cordon "$node"
     fi
   else
     echo -e "\n${blue}Draining node $node...${nocolor}"
     if $dryrun; then
-      echo "kubectl drain $node --ignore-daemonsets --delete-emptydir-data --force"
+      echo "kubectl drain $node --ignore-daemonsets --delete-emptydir-data --force $context"
     else
-      kubectl drain "$node" --ignore-daemonsets --delete-emptydir-data --force
+      kubectl drain "$node" --ignore-daemonsets --delete-emptydir-data --force $context
     fi
   fi
-  
+
   echo -e "${blue}Initiating node restart job on $node...${nocolor}"
   pod="node-restart-$(env LC_CTYPE=C LC_ALL=C tr -dc a-z0-9 < /dev/urandom | head -c 5)"
   if $dryrun; then
-    echo "kubectl create job $pod"
+    echo "kubectl create job $pod $context"
   else
-cat << EOT | kubectl apply -f -
+    kubectl apply $context -f- << EOT
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -205,18 +212,18 @@ EOT
     echo "Waiting $kubeletdeadline seconds for kubelet initialization."
   fi
 
-  if [[ $uncordondelay -gt 0 ]];
-    then echo "Waiting $uncordondelay seconds before uncordoning."
+  if [[ $uncordondelay -gt 0 ]]; then
+    echo "Waiting $uncordondelay seconds before uncordoning."
   fi
 
   echo -e "${blue}Uncordoning node $node${nocolor}"
 
   if $dryrun; then
-    echo "kubectl uncordon $node"
+    echo "kubectl uncordon $node $context"
   else
     sleep $uncordondelay
-    kubectl uncordon "$node"
-    kubectl delete job $pod -n kube-system
+    kubectl uncordon "$node" $context
+    kubectl delete job $pod -n kube-system $context
     sleep $nodesleep
   fi
 done

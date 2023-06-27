@@ -17,7 +17,7 @@
 - perform rolling restart of all nodes in a cluster
 
 ```bash
-    kubectl node-restart all
+    kubectl node-restart [--context cluster] all
 ```
 
 - restart only specific nodes selected through labels
